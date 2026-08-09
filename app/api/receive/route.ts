@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getMailDomain, verifyWebhookSignature } from '@/lib/utils';
+import { getMailDomain } from '@/lib/utils';
+import { verifyWebhookSignature } from '@/lib/webhook';
 
 /**
  * Inbound email webhook endpoint.
