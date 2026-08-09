@@ -1,27 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getMailDomain, verifyMailgunSignature } from '@/lib/utils';
+import { getMailDomain, verifyWebhookSignature } from '@/lib/utils';
 
+/**
+ * Inbound email webhook endpoint.
+ * Called by the Cloudflare Email Worker when a new email arrives.
+ *
+ * Expected JSON body:
+ * {
+ *   "to": "user@send.dedyn.io",
+ *   "from": "Sender Name <sender@example.com>",
+ *   "subject": "Hello",
+ *   "body_text": "Plain text body",
+ *   "body_html": "<p>HTML body</p>",
+ *   "sig": "hmac-sha256-signature"
+ * }
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Verify Mailgun signature
-    const timestamp = request.headers.get('timestamp') || '';
-    const token = request.headers.get('token') || '';
-    const signature = request.headers.get('signature') || '';
+    const rawBody = await request.text();
+    let body: Record<string, unknown>;
 
-    if (!verifyMailgunSignature(timestamp, token, signature)) {
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON' },
+        { status: 400 },
+      );
+    }
+
+    // Verify webhook signature
+    const sig = request.headers.get('x-webhook-sig') || (body.sig as string) || '';
+    if (!verifyWebhookSignature(rawBody, sig)) {
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 401 },
       );
     }
 
-    const formData = await request.formData();
-    const recipient = formData.get('recipient') as string | null;
-    const sender = formData.get('sender') as string | null;
-    const subject = formData.get('subject') as string | null;
-    const bodyPlain = formData.get('body-plain') as string | null;
-    const bodyHtml = formData.get('body-html') as string | null;
+    const recipient = body.to as string | null;
+    const sender = body.from as string | null;
+    const subject = body.subject as string | null;
+    const bodyPlain = body.body_text as string | null;
+    const bodyHtml = body.body_html as string | null;
 
     if (!recipient || !sender) {
       return NextResponse.json(
@@ -40,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Look up user by username using service role key
+    // Look up user by username
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

@@ -6,12 +6,12 @@ export function getMailDomain(): string {
 
 export function stripHtml(html: string): string {
   return html
-    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<br\s*\/?/gi, '\n')
     .replace(/<p[^>]*>/gi, '\n')
     .replace(/<\/p>/gi, '')
     .replace(/<div[^>]*>/gi, '\n')
     .replace(/<\/div>/gi, '')
-    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<li[^>]*>/gi, '\u2022 ')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -23,17 +23,14 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-export function verifyMailgunSignature(
-  timestamp: string,
-  token: string,
+export function verifyWebhookSignature(
+  payload: string,
   signature: string,
 ): boolean {
-  const apiKey = process.env.MAILGUN_SIGNING_KEY;
-  if (!apiKey) return false;
-
-  const encoded = Buffer.from(apiKey, 'utf-8').toString('base64');
-  const data = `${timestamp}${token}`;
-  const expected = createHmac('sha256', encoded).update(data).digest('hex');
-
+  const secret = process.env.INBOUND_WEBHOOK_SECRET;
+  if (!secret || !signature) return false;
+  const expected = createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
   return expected === signature;
 }
