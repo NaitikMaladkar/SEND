@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbar styling for the email list */
+.email-list::-webkit-scrollbar {
+  width: 6px;
+}
+.email-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.email-list::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+.email-list::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
